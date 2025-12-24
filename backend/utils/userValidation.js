@@ -137,6 +137,28 @@ export const loginValidation = [
     validPassword
 ];
 
+
+// ===================================validation for update password ====================================
+export const validNewPassword = body('newPassword')
+    .trim()
+    .notEmpty().withMessage('Password is required')
+    .bail()
+    .isLength({ min: 6, max: 20 }).withMessage('Password should be between 6 and 20 characters')
+    .bail()
+    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+    .bail()
+    .matches(/\d/).withMessage('Password must contain at least one digit')
+    .bail()
+    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+    .bail()
+    .matches(/[@$!%*?&]/).withMessage('Password must contain at least one special character (@$!%*?&)');
+
+
+
+export const updatePasswordValidation = [
+    validPassword, validNewPassword
+
+]
 // =================== Error Handling =====================
 
 export const ValidError = (req, res, next) => {

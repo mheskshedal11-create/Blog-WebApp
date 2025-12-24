@@ -22,7 +22,7 @@ const userSchema = mongoose.Schema({
         type: String,
         required: true,
     },
-    refers_token: {
+    refresh_token: {
         type: String,
         default: ''
     },
