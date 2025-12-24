@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+
 const AccessToken = (userId) => {
     try {
         if (!process.env.ACCESS_TOKEN) {
@@ -13,3 +14,5 @@ const AccessToken = (userId) => {
 };
 
 export default AccessToken;
+
+

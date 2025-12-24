@@ -157,7 +157,6 @@ export const validNewPassword = body('newPassword')
 
 export const updatePasswordValidation = [
     validPassword, validNewPassword
-
 ]
 // =================== Error Handling =====================
 
