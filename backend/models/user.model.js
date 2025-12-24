@@ -2,28 +2,37 @@ import mongoose from 'mongoose'
 
 const userSchema = mongoose.Schema({
     name: {
-        type: String
+        type: String,
+        required: true
     },
     email: {
         type: String
+        ,
+        required: true
     },
     password: {
-        type: String
+        type: String,
+        required: true
     },
     avatar: {
-        type: String
+        type: String,
+        default: ''
     },
     mobile: {
-        type: Number
+        type: String,
+        required: true,
     },
     refers_token: {
-        type: String
+        type: String,
+        default: ''
     },
     forgot_password_otp: {
-        type: Number
+        type: Number,
+        default: ''
     },
     forgot_password_exp: {
-        type: Date
+        type: Date,
+        default: ''
     },
     role: {
         type: String,
@@ -31,7 +40,8 @@ const userSchema = mongoose.Schema({
         default: 'user'
     },
     bio: {
-        type: String
+        type: String,
+        default: ''
     }
 }, { timestamps: true })
 const User = mongoose.model('User', userSchema)

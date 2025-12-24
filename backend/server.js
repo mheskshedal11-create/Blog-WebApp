@@ -6,6 +6,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import dbConnection from './config/connection.js'
 import globalErrorHandler from './middleware/globalErrorHandling.js'
+import userRouter from './router/user.route.js'
 
 const app = express()
 const PORT = process.env.PORT || 8000
@@ -28,6 +29,9 @@ app.use(cors({
 
 //global error handler
 app.use(globalErrorHandler)
+
+//router
+app.use('/api/v1/user', userRouter)
 
 // connect db and start server
 dbConnection().then(() => {
