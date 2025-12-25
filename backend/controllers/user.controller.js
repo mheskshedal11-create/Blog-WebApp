@@ -164,7 +164,7 @@ export const updateProfileController = async (req, res) => {
             });
         }
 
-        // Check if email already exists (if email is provided)
+        // Check if email is being updated and ensure it's unique
         if (email) {
             const existingEmail = await User.findOne({ email });
             if (existingEmail) {
@@ -175,7 +175,7 @@ export const updateProfileController = async (req, res) => {
             }
         }
 
-        // Check if mobile already exists (if mobile is provided)
+        // Check if mobile is unique (whether or not you are updating it)
         if (mobile) {
             const existingMobile = await User.findOne({ mobile });
             if (existingMobile) {
@@ -186,13 +186,13 @@ export const updateProfileController = async (req, res) => {
             }
         }
 
-        // Perform the update
+        // Perform the update, allowing updates only for the fields provided
         const user = await User.findByIdAndUpdate(
             id,
             {
-                ...(name && { name }),  // Only update if name is provided
-                ...(email && { email }),  // Only update if email is provided
-                ...(mobile && { mobile })  // Only update if mobile is provided
+                ...(name && { name }),  // Only update name if provided
+                ...(email && { email }),  // Only update email if provided
+                ...(mobile && { mobile })  // Only update mobile if provided
             },
             { new: true }  // Return the updated document
         );
@@ -207,7 +207,7 @@ export const updateProfileController = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
-            user  // Send the updated user data
+            user
         });
 
     } catch (error) {
@@ -218,6 +218,7 @@ export const updateProfileController = async (req, res) => {
         });
     }
 };
+
 
 
 //updatePassword
