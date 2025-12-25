@@ -143,6 +143,7 @@ export const validNewPassword = body('newPassword')
     .trim()
     .notEmpty().withMessage('Password is required')
     .bail()
+    .optional()
     .isLength({ min: 6, max: 20 }).withMessage('Password should be between 6 and 20 characters')
     .bail()
     .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
@@ -158,6 +159,11 @@ export const validNewPassword = body('newPassword')
 export const updatePasswordValidation = [
     validPassword, validNewPassword
 ]
+
+// ===================================validate forgot password================================
+
+
+export const validForgotPassword = [validEmailForLogin, validMobileNumberForLogin]
 // =================== Error Handling =====================
 
 export const ValidError = (req, res, next) => {

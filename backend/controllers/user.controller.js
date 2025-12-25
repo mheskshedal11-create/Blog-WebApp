@@ -151,6 +151,75 @@ export const logoutController = async (req, res) => {
     }
 };
 
+//updateProfile 
+export const updateProfileController = async (req, res) => {
+    try {
+        const { name, email, mobile } = req.body;
+        const { id } = req.user;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID not found"
+            });
+        }
+
+        // Check if email already exists (if email is provided)
+        if (email) {
+            const existingEmail = await User.findOne({ email });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email already exists'
+                });
+            }
+        }
+
+        // Check if mobile already exists (if mobile is provided)
+        if (mobile) {
+            const existingMobile = await User.findOne({ mobile });
+            if (existingMobile) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mobile number already exists'
+                });
+            }
+        }
+
+        // Perform the update
+        const user = await User.findByIdAndUpdate(
+            id,
+            {
+                ...(name && { name }),  // Only update if name is provided
+                ...(email && { email }),  // Only update if email is provided
+                ...(mobile && { mobile })  // Only update if mobile is provided
+            },
+            { new: true }  // Return the updated document
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            user  // Send the updated user data
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Profile update failed, server error'
+        });
+    }
+};
+
+
 //updatePassword
 export const updatePasswordController = async (req, res) => {
     try {
@@ -381,3 +450,39 @@ export const createNewPassword = async (req, res) => {
         });
     }
 }
+
+//get user profile 
+export const getProfileController = async (req, res) => {
+    try {
+        const { id } = req.user;
+
+        // Check if user ID is available
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID is missing"
+            });
+        }
+
+        const user = await User.findById(id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "Profile not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "User profile fetched successfully",
+            data: user
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Profile not fetched, server error"
+        });
+    }
+};
