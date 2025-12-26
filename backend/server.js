@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import dbConnection from './config/connection.js'
 import globalErrorHandler from './middleware/globalErrorHandling.js'
 import userRouter from './router/user.route.js'
+import categoryRouter from './router/category.route.js'
 
 const app = express()
 const PORT = process.env.PORT || 8000
@@ -32,7 +33,7 @@ app.use(globalErrorHandler)
 
 //router
 app.use('/api/v1/user', userRouter)
-
+app.use('/api/v1/category', categoryRouter)
 // connect db and start server
 dbConnection().then(() => {
     app.listen(PORT, () => {

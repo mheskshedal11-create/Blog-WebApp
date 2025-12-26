@@ -7,7 +7,7 @@ import OtpGenerator from '../utils/otpGenerator.js';
 
 export const registerController = async (req, res) => {
     try {
-        const { name, email, password, mobile } = req.body;
+        const { name, email, password, mobile, role } = req.body;
 
         // Check if email already exists
         if (email) {
@@ -37,7 +37,8 @@ export const registerController = async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            mobile
+            mobile,
+            role
         });
 
         // Save the new user to the database
