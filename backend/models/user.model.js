@@ -6,12 +6,13 @@ const userSchema = mongoose.Schema({
         required: true
     },
     email: {
-        type: String
-        ,
+        type: String,
+        unique: [true, 'Email already registered'],
         required: true
     },
     password: {
         type: String,
+        unique: [true, 'Mobile Number already registered'],
         required: true
     },
     avatar: {

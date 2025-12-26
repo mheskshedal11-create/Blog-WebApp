@@ -1,184 +1,139 @@
-import { body, validationResult } from 'express-validator';
-import axios from 'axios';
+import { body, validationResult } from 'express-validator'
 
-const API_KEY = process.env.MOBILE_API;
-const VALID_URL = 'http://apilayer.net/api/validate?';
-
-// Phone number validation via external API
-const numberValidation = async (number, countryCode) => {
-    try {
-        const res = await axios.get(VALID_URL, {
-            params: {
-                access_key: API_KEY,
-                number: number,
-                country_code: countryCode, // Specify the country code
-                format: 1,
-            },
-        });
-
-        // Check the validity of the phone number from the API response
-        if (res.data.valid) {
-            return res.data;
-        } else {
-            throw new Error('Phone number is not valid');
-        }
-    } catch (error) {
-        throw new Error(error.response?.data?.error?.info || 'Phone number validation API failed');
-    }
-};
-
-// Validate Name
-export const validName = body('name')
+// =================================================validation for register ===============================================
+const validateName = body('name')
     .trim()
-    .notEmpty().withMessage('Name is required')
+    .notEmpty().withMessage('Enter Your FullName')
     .bail()
-    .isLength({ min: 3, max: 20 }).withMessage('Name should be between 3 and 20 characters');
+    .isLength({ min: 3 }).withMessage('Name should be minimum 3 characters')
+    .bail()
+    .isLength({ max: 20 }).withMessage('Name should be maximum 20 characters')
 
-// Validate Email
-export const validEmail = body('email')
+const validateEmail = body('email')
     .notEmpty().withMessage('Email is required')
     .bail()
+    .isEmail().withMessage('Please enter valid email')
     .normalizeEmail()
-    .bail()
-    .isEmail().withMessage('Enter a valid email');
 
-// Validate Password
-export const validPassword = body('password')
+const validatePassword = body('password')
     .trim()
-    .notEmpty().withMessage('Password is required')
+    .notEmpty().withMessage('Enter your password')
     .bail()
-    .isLength({ min: 6, max: 20 }).withMessage('Password should be between 6 and 20 characters')
+    .isLength({ min: 6 }).withMessage('Password should be minimum 6 characters')
     .bail()
-    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+    .isLength({ max: 20 }).withMessage('Password should be maximum 20 characters')
     .bail()
-    .matches(/\d/).withMessage('Password must contain at least one digit')
+    .matches(/[A-Z]/).withMessage('Password should have at least one capital letter')
     .bail()
-    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/).withMessage('Password should have at least one lowercase letter')
     .bail()
-    .matches(/[@$!%*?&]/).withMessage('Password must contain at least one special character (@$!%*?&)');
+    .matches(/[0-9]/).withMessage('Password should have at least one digit')
+    .bail()
+    .matches(/[!@#$%&*]/).withMessage('Password should have at least one special character (!@#$%&*)')
 
-// Validate Mobile Number with Country Code
-export const validMobileNumber = [
-    body('mobile')
-        .trim()
-        .notEmpty().withMessage('Mobile number is required')
-        .matches(/^\+?\d{1,3}\d{10}$/).withMessage('Enter a valid mobile number with country code') // Validates mobile number with country code
-        .custom(async (value) => {
-            // Extract country code (first 3 digits including '+')
-            const countryCode = value.slice(0, 3);
-            const localNumber = value.slice(3);  // Get the rest of the number after the country code
-            const result = await numberValidation(localNumber, countryCode); // Validate using country code and number
-            if (!result.valid) {
-                throw new Error('Invalid phone number');
-            }
-            return true;
-        }),
+const validateMobile = body('mobile')
+    .trim()
+    .notEmpty().withMessage('Please enter your mobile number')
+    .bail()
+    .matches(/^9[6-9]\d{8}$/).withMessage('Please enter a valid Nepali mobile number starting with 96, 97, 98, or 99')
+    .bail()
+    .isLength({ min: 10, max: 10 }).withMessage('Mobile number must be exactly 10 digits')
 
-    // Error handling middleware
-    (req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }
-];
 
-// Register validation middleware
-export const RegisterValidation = [
-    validName,
-    validEmail,
-    validPassword,
-    validMobileNumber
-];
-
-// ========================validation for login======================
-// Validate Email
-export const validEmailForLogin = body('email')
+export const RegisterValidator = [
+    validateName,
+    validateEmail,
+    validatePassword,
+    validateMobile
+]
+// =======================================================login validation=========================================================
+const validateEmailForLogin = body('email')
     .notEmpty().withMessage('Email is required')
     .bail()
-    .optional()
+    .isEmail().withMessage('Please enter valid email')
     .normalizeEmail()
-    .bail()
-    .isEmail().withMessage('Enter a valid email');
-
-
-export const validMobileNumberForLogin = [
-    body('mobile')
-        .trim()
-        .optional()
-        .notEmpty().withMessage('Mobile number is required')
-        .matches(/^\+?\d{1,3}\d{10}$/).withMessage('Enter a valid mobile number with country code') // Validates mobile number with country code
-        .custom(async (value) => {
-            // Extract country code (first 3 digits including '+')
-            const countryCode = value.slice(0, 3);
-            const localNumber = value.slice(3);  // Get the rest of the number after the country code
-            const result = await numberValidation(localNumber, countryCode); // Validate using country code and number
-            if (!result.valid) {
-                throw new Error('Invalid phone number');
-            }
-            return true;
-        }),
-
-    // Error handling middleware
-    (req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }
-];
-
-// Login validation middleware
-export const loginValidation = [
-    validEmailForLogin,
-    validMobileNumberForLogin,
-    validPassword
-];
-
-
-// ===================================validation for update password ====================================
-export const validNewPassword = body('newPassword')
-    .trim()
-    .notEmpty().withMessage('Password is required')
-    .bail()
     .optional()
-    .isLength({ min: 6, max: 20 }).withMessage('Password should be between 6 and 20 characters')
-    .bail()
-    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
-    .bail()
-    .matches(/\d/).withMessage('Password must contain at least one digit')
-    .bail()
-    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
-    .bail()
-    .matches(/[@$!%*?&]/).withMessage('Password must contain at least one special character (@$!%*?&)');
 
+const validateMobileForLogin = body('mobile')
+    .trim()
+    .notEmpty().withMessage('Please enter your mobile number')
+    .bail()
+    .matches(/^9[6-9]\d{8}$/).withMessage('Please enter a valid Nepali mobile number starting with 96, 97, 98, or 99')
+    .bail()
+    .isLength({ min: 10, max: 10 }).withMessage('Mobile number must be exactly 10 digits')
+    .optional()
 
-
-export const updatePasswordValidation = [
-    validPassword, validNewPassword
+export const loginValidator = [
+    validateEmailForLogin,
+    validatePassword,
+    validateMobileForLogin
 ]
 
-// ===================================validate forgot password================================
+
+// ===================================================validation for updatepassword ===========================================
+const validatePasswordForUpdate = body('newPassword')
+    .trim()
+    .notEmpty().withMessage('Enter your password')
+    .bail()
+    .isLength({ min: 6 }).withMessage('Password should be minimum 6 characters')
+    .bail()
+    .isLength({ max: 20 }).withMessage('Password should be maximum 20 characters')
+    .bail()
+    .matches(/[A-Z]/).withMessage('Password should have at least one capital letter')
+    .bail()
+    .matches(/[a-z]/).withMessage('Password should have at least one lowercase letter')
+    .bail()
+    .matches(/[0-9]/).withMessage('Password should have at least one digit')
+    .bail()
+    .matches(/[!@#$%&*]/).withMessage('Password should have at least one special character (!@#$%&*)')
+
+export const updatePasswordValidation = [
+    validatePasswordForUpdate
+]
+// ==================================================update profile==============================================================
+
+const validateNameForUpdate = body('name')
+    .trim()
+    .notEmpty().withMessage('Enter Your FullName')
+    .bail()
+    .isLength({ min: 3 }).withMessage('Name should be minimum 3 characters')
+    .bail()
+    .isLength({ max: 20 }).withMessage('Name should be maximum 20 characters')
+    .optional()
+
+const validateEmailForUpdate = body('email')
+    .notEmpty().withMessage('Email is required')
+    .bail()
+    .isEmail().withMessage('Please enter valid email')
+    .normalizeEmail()
+    .optional()
 
 
-export const validForgotPassword = [validEmailForLogin, validMobileNumberForLogin]
-// =================== Error Handling =====================
+const validateMobileForUpdate = body('mobile')
+    .trim()
+    .notEmpty().withMessage('Please enter your mobile number')
+    .bail()
+    .matches(/^9[6-9]\d{8}$/).withMessage('Please enter a valid Nepali mobile number starting with 96, 97, 98, or 99')
+    .bail()
+    .isLength({ min: 10, max: 10 }).withMessage('Mobile number must be exactly 10 digits')
+    .optional()
 
-export const ValidError = (req, res, next) => {
-    const errors = validationResult(req);
+export const updateProfileValidation = [
+    validateNameForUpdate,
+    validateEmailForUpdate,
+    validateMobileForUpdate
+]
+// ==============================================for error===================================================================
+
+export const validErrorCheck = (req, res, next) => {
+    const errors = validationResult(req)
     if (!errors.isEmpty()) {
-        const formattedErrors = errors.array().map((err) => ({
-            message: err.msg,
-            field: err.param,
-            value: err.value,
-        }));
-
         return res.status(400).json({
             success: false,
-            errors: formattedErrors,  // Return cleaner, customized error structure
-        });
+            errors: errors.array().map((err) => {
+                return { message: err.msg }
+            })
+        })
     }
-    next();
-};
+    next()
+}

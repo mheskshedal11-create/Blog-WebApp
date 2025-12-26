@@ -1,15 +1,30 @@
-import express from 'express'
-import { createNewPassword, forGotPasswordController, getProfileController, loginController, logoutController, registerController, updatePasswordController, updateProfileController, verifyOtpController } from '../controllers/user.controller.js'
-import { loginValidation, RegisterValidation, updatePasswordValidation, ValidError, validForgotPassword } from '../utils/userValidation.js';
+import express from 'express';
+import {
+    createNewPassword,
+    forGotPasswordController,
+    getProfileController,
+    loginController,
+    logoutController,
+    refreshTokenController,
+    registerController,
+    updatePasswordController,
+    updateProfileController,
+    verifyOtpController
+} from '../controllers/user.controller.js';
+import { loginValidator, RegisterValidator, updatePasswordValidation, updateProfileValidation, validErrorCheck } from '../utils/userValidation.js';
 import authMiddleware from '../middleware/auth.js';
-const userRouter = express.Router()
-userRouter.post('/registers', RegisterValidation, ValidError, registerController);
-userRouter.post('/login', loginValidation, ValidError, loginController);
-userRouter.get('/logout', authMiddleware, logoutController)
-userRouter.put('/update-profile', authMiddleware, updateProfileController)
-userRouter.post('/update-password', authMiddleware, updatePasswordValidation, ValidError, updatePasswordController)
-userRouter.post('/forogt-password', validForgotPassword, ValidError, forGotPasswordController)
-userRouter.post('/verify-opt', validForgotPassword, ValidError, verifyOtpController)
-userRouter.post('/change-password', validForgotPassword, ValidError, createNewPassword)
-userRouter.get('/get-profile', authMiddleware, getProfileController)
+
+const userRouter = express.Router();
+
+userRouter.post('/register', RegisterValidator, validErrorCheck, registerController);
+userRouter.post('/login', loginValidator, validErrorCheck, loginController);
+userRouter.post('/refresh-token', refreshTokenController);
+userRouter.post('/forgot-password', forGotPasswordController);
+userRouter.post('/verify-otp', verifyOtpController);
+userRouter.put('/reset-password', updatePasswordValidation, validErrorCheck, createNewPassword);
+userRouter.post('/logout', authMiddleware, logoutController);
+userRouter.get('/profile', authMiddleware, getProfileController);
+userRouter.put('/profile', authMiddleware, updateProfileValidation, validErrorCheck, updateProfileController);
+userRouter.put('/password', authMiddleware, updatePasswordValidation, validErrorCheck, updatePasswordController);
+
 export default userRouter;

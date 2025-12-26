@@ -2,14 +2,14 @@ import bcrypt from 'bcryptjs';
 import User from "../models/user.model.js";
 import AccessToken from '../utils/accessToken.js';
 import RefreshToken from '../utils/refersToken.js';
-import jwt from 'jsonwebtoken'
 import OtpGenerator from '../utils/otpGenerator.js';
+
 
 export const registerController = async (req, res) => {
     try {
-        console.log(req.body)
         const { name, email, password, mobile } = req.body;
 
+        // Check if email already exists
         if (email) {
             const existingEmail = await User.findOne({ email });
             if (existingEmail) {
@@ -19,7 +19,7 @@ export const registerController = async (req, res) => {
                 });
             }
         }
-
+        // Check if mobile number already exists
         if (mobile) {
             const existingMobile = await User.findOne({ mobile });
             if (existingMobile) {
@@ -29,12 +29,10 @@ export const registerController = async (req, res) => {
                 });
             }
         }
-
-        // Hashing the password
+        // Hashing the password securely
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Create a new user
+        // Create a new user object
         const newUser = new User({
             name,
             email,
@@ -42,19 +40,25 @@ export const registerController = async (req, res) => {
             mobile
         });
 
+        // Save the new user to the database
         await newUser.save();
+
+        // Optionally remove sensitive fields like the password from the response
+        // Remove password from the response
+        const userResponse = newUser.toObject();
+        delete userResponse.password;
 
         return res.status(200).json({
             success: true,
             message: 'User Registered Successfully',
-            newUser
+            user: userResponse
         });
     } catch (error) {
-        console.error(error);  // Make sure the error is logged
+        console.error(error);
         return res.status(500).json({
             success: false,
             message: "User registration failed due to server error",
-            error: error.message // Adding error message here for better debugging
+            error: error.message
         });
     }
 };
@@ -62,8 +66,14 @@ export const registerController = async (req, res) => {
 // for login 
 export const loginController = async (req, res) => {
     try {
+
         const { email, password, mobile } = req.body;
+
+        // Search for user by either email or mobile number
+        // Uses MongoDB $or operator to match either field
         const user = await User.findOne({ $or: [{ email }, { mobile }] });
+
+        // Check if user exists in database
 
         if (!user) {
             return res.status(400).json({
@@ -72,6 +82,8 @@ export const loginController = async (req, res) => {
             });
         }
 
+        // Verify password by comparing hashed password from database
+        // with the plain text password provided by user
         const comparePassword = await bcrypt.compare(password, user.password);
         if (!comparePassword) {
             return res.status(400).json({
@@ -80,8 +92,10 @@ export const loginController = async (req, res) => {
             });
         }
 
-        const accessToken = AccessToken(user._id);
-        const refreshToken = await RefreshToken(user._id);  // ✅ Add await here
+        // Generate authentication tokens
+        const accessToken = AccessToken(user._id); // Short-lived token for API requests (typically 15-30 mins)
+        const refreshToken = await RefreshToken(user._id); // Long-lived token for token refresh (typically 7-30 days)
+
 
         const cookieOption = {
             httpOnly: true,
@@ -89,19 +103,27 @@ export const loginController = async (req, res) => {
             sameSite: 'None',
         };
 
+        // Send tokens to client as HTTP-only cookies for secure storage
         res.cookie('accessToken', accessToken, cookieOption);
         res.cookie('refreshToken', refreshToken, cookieOption);
 
+        // Prepare response by removing sensitive password field
+
+        const loginResponse = user.toObject();
+        delete loginResponse.password;
+
+        // Send successful login response with user data and tokens
         return res.status(200).json({
             success: true,
             message: 'Login Successful',
             data: {
-                user,
+                loginResponse,
                 accessToken,
                 refreshToken
             }
         });
     } catch (error) {
+
         console.error('Login error:', error);
         return res.status(500).json({
             success: false,
@@ -111,182 +133,41 @@ export const loginController = async (req, res) => {
     }
 };
 
-//logout
-export const logoutController = async (req, res) => {
+// refresh token for controller
+export const refreshTokenController = async (req, res) => {
     try {
-        const userId = req.user._id;
-
-        const cookieOption = {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'None',
-        };
-
-        // Clear cookies
-        res.clearCookie('accessToken', cookieOption);
-        res.clearCookie('refreshToken', cookieOption);
-
-        // Remove refresh token from database
-        await User.findByIdAndUpdate(
-            userId,
-            {
-                $unset: {
-                    refresh_token: 1
-                }
-            },
-            { new: true }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: 'User logged out successfully'
-        });
-
-    } catch (error) {
-        console.error('Logout error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'User logout failed - server error'
-        });
-    }
-};
-
-//updateProfile 
-export const updateProfileController = async (req, res) => {
-    try {
-        const { name, email, mobile } = req.body;
-        const { id } = req.user;
-
-        if (!id) {
-            return res.status(400).json({
+        const refreshToken = req.cookies?.refreshToken;
+        // If not found, user needs to log in again
+        if (!refreshToken) {
+            return res.status(401).json({
                 success: false,
-                message: "User ID not found"
+                message: 'Refresh token not found. Please log in again.'
             });
         }
-
-        // Check if email is being updated and ensure it's unique
-        if (email) {
-            const existingEmail = await User.findOne({ email });
-            if (existingEmail) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Email already exists'
-                });
-            }
-        }
-
-        // Check if mobile is unique (whether or not you are updating it)
-        if (mobile) {
-            const existingMobile = await User.findOne({ mobile });
-            if (existingMobile) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Mobile number already exists'
-                });
-            }
-        }
-
-        // Perform the update, allowing updates only for the fields provided
-        const user = await User.findByIdAndUpdate(
-            id,
-            {
-                ...(name && { name }),  // Only update name if provided
-                ...(email && { email }),  // Only update email if provided
-                ...(mobile && { mobile })  // Only update mobile if provided
-            },
-            { new: true }  // Return the updated document
-        );
+        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN);
+        const user = await User.findById(decoded.id)
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
+            return res.status(401).json({
+                message: 'User not found'
             });
         }
-
-        res.status(200).json({
-            success: true,
-            message: 'Profile updated successfully',
-            user
-        });
+        if (user.refreshToken !== refreshToken) {
+            return res.status(401).json({
+                message: 'Invalid refresh token'
+            });
+        }
+        const newAccessToken = AccessToken(user._id);
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: 'Profile update failed, server error'
-        });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                message: 'Refresh token expired',
+                refreshTokenExpired: true
+            });
+        }
     }
-};
-
-
-
-//updatePassword
-export const updatePasswordController = async (req, res) => {
-    try {
-        const userId = req.user._id;
-        const { password, newPassword, confirmPassword } = req.body;
-
-        // Fetch user from the database
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        // Compare the old password with the stored password
-        const comparePassword = await bcrypt.compare(password, user.password);
-        if (!comparePassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Incorrect old password"
-            });
-        }
-
-        // Ensure the new password and confirm password match
-        if (newPassword !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "New password and confirm password do not match"
-            });
-        }
-
-        // Hash the new password
-        console.log('About to hash password...');
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
-        console.log('Password hashed successfully');
-
-        // Update the password in the database
-        console.log('About to update database...');
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $set: { password: hashedPassword } },
-            { new: true }
-        );
-        console.log('Database updated:', !!updatedUser);
-
-        // Respond with success message
-        return res.status(200).json({
-            success: true,
-            message: 'Password updated successfully',
-            user: {
-                username: updatedUser.username,
-                email: updatedUser.email
-            }
-        });
-
-    } catch (error) {
-        console.error(error);  // Log the actual error to the console for debugging
-        return res.status(500).json({
-            success: false,
-            message: "Failed to update password. Please try again later."
-        });
-    }
-};
+}
 
 // Forgot Password Controller
 export const forGotPasswordController = async (req, res) => {
@@ -452,6 +333,46 @@ export const createNewPassword = async (req, res) => {
     }
 }
 
+// logout
+// Clears authentication tokens from cookies and removes refresh token from database
+export const logoutController = async (req, res) => {
+    try {
+        // Get user ID from authenticated request
+        const userId = req.user._id
+        // Configure cookie options to match those used during login
+        const cookieOption = {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'None',
+        };
+        // Clear authentication cookies from client browser
+        res.clearCookie('accessToken', cookieOption);
+        res.clearCookie('refreshToken', cookieOption);
+        // Remove refresh token from database for additional security
+        await User.findByIdAndUpdate(
+            userId,
+            {
+                $unset: {
+                    refresh_token: 1
+                }
+            },
+            { new: true }
+        );
+        // Send success response
+        return res.status(200).json({
+            success: true,
+            message: 'User logged out successfully'
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'User logout failed - server error'
+        });
+    }
+};
+
+
 //get user profile 
 export const getProfileController = async (req, res) => {
     try {
@@ -473,11 +394,12 @@ export const getProfileController = async (req, res) => {
                 message: "Profile not found"
             });
         }
-
+        const getProfileResponse = user.toObject()
+        delete getProfileResponse.password
         return res.status(200).json({
             success: true,
             message: "User profile fetched successfully",
-            data: user
+            data: getProfileResponse
         });
     } catch (error) {
         console.error(error);
@@ -487,3 +409,140 @@ export const getProfileController = async (req, res) => {
         });
     }
 };
+
+//updateProfile 
+export const updateProfileController = async (req, res) => {
+    try {
+        const { name, email, mobile } = req.body;
+        const { id } = req.user;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "User ID not found"
+            });
+        }
+
+        // Check if email is being updated and ensure it's unique
+        if (email) {
+            const existingEmail = await User.findOne({ email });
+            if (existingEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email already exists'
+                });
+            }
+        }
+
+        // Check if mobile is unique (whether or not you are updating it)
+        if (mobile) {
+            const existingMobile = await User.findOne({ mobile });
+            if (existingMobile) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mobile number already exists'
+                });
+            }
+        }
+
+        // Perform the update, allowing updates only for the fields provided
+        const user = await User.findByIdAndUpdate(
+            id,
+            {
+                ...(name && { name }),  // Only update name if provided
+                ...(email && { email }),  // Only update email if provided
+                ...(mobile && { mobile })  // Only update mobile if provided
+            },
+            { new: true }  // Return the updated document
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            user
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Profile update failed, server error'
+        });
+    }
+};
+
+//updatePassword
+export const updatePasswordController = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { password, newPassword, confirmPassword } = req.body;
+
+        // Fetch user from the database
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Compare the old password with the stored password
+        const comparePassword = await bcrypt.compare(password, user.password);
+        if (!comparePassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Incorrect old password"
+            });
+        }
+
+        // Ensure the new password and confirm password match
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "New password and confirm password do not match"
+            });
+        }
+
+        // Hash the new password
+        console.log('About to hash password...');
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        console.log('Password hashed successfully');
+
+        // Update the password in the database
+        console.log('About to update database...');
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: { password: hashedPassword } },
+            { new: true }
+        );
+        console.log('Database updated:', !!updatedUser);
+
+        // Respond with success message
+        return res.status(200).json({
+            success: true,
+            message: 'Password updated successfully',
+            user: {
+                username: updatedUser.username,
+                email: updatedUser.email
+            }
+        });
+
+    } catch (error) {
+        console.error(error);  // Log the actual error to the console for debugging
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update password. Please try again later."
+        });
+    }
+};
+
+
