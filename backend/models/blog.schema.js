@@ -1,9 +1,14 @@
-import mongoose from "mongoose";
 
+import mongoose from "mongoose";
 const blogSchema = mongoose.Schema({
     author: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+        required: true
+    },
+    category: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
         required: true
     },
     image: {
@@ -13,7 +18,7 @@ const blogSchema = mongoose.Schema({
     title: {
         type: String
     },
-    excent: {
+    excerpt: {  // Fixed typo here
         type: String
     },
     description: {
@@ -22,17 +27,17 @@ const blogSchema = mongoose.Schema({
     tag: {
         type: [String],
         default: []
-
     },
     status: {
         type: String,
         enum: ['Pending', 'Accept', "Reject"],
-        default: 'pending'
+        default: 'Pending'
     },
     commentEnable: {
         type: Boolean,
         default: true
     }
-}, { timestamps: true })
+}, { timestamps: true });
+
 const Blog = mongoose.model('Blog', blogSchema)
 export default Blog
