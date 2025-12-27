@@ -1,9 +1,9 @@
 const roleAuthorization = (role) => {
     return (req, res, next) => {
-        if (req.user.role !== 'admin') {
-            return res.status(400).json({
+        if (!role.includes(req.user.role)) {
+            return res.status(403).json({
                 success: false,
-                message: 'Access denied. Admin privileges required...........'
+                message: 'Access denied. Insufficient privileges.'
             })
         }
         next()
