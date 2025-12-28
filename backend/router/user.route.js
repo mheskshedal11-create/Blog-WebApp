@@ -11,8 +11,9 @@ import {
     updateProfileController,
     verifyOtpController
 } from '../controllers/user.controller.js';
-import { loginValidator, RegisterValidator, updatePasswordValidation, updateProfileValidation, validErrorCheck } from '../utils/userValidation.js';
+import { loginValidator, RegisterValidator, updatePasswordValidation, updateProfileValidation } from '../utils/userValidation.js';
 import authMiddleware from '../middleware/auth.js';
+import { validErrorCheck } from '../utils/validationError.js'
 
 const userRouter = express.Router();
 
