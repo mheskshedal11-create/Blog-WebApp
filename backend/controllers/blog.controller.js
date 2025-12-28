@@ -2,6 +2,8 @@ import Blog from "../models/blog.schema.js";
 import Category from "../models/category.model.js";
 import fs from 'fs'
 import path from 'path'
+
+//create blog post 
 export const createBlogController = async (req, res) => {
     try {
         const { title, category, excerpt, description, tag, status, commentEnable } = req.body;
@@ -13,6 +15,7 @@ export const createBlogController = async (req, res) => {
                 message: 'Category not found'
             });
         }
+
         let tagArray = [];
 
         if (!tag) {
@@ -91,6 +94,76 @@ export const createBlogController = async (req, res) => {
             success: false,
             message: 'Failed to create the blog',
             error: error.message
+        });
+    }
+};
+
+//get all blog
+export const getAllBlogController = async (req, res) => {
+    try {
+        // Fetch all blogs
+        const getAllBlog = await Blog.find();
+
+        // Check if no blogs are found
+        if (getAllBlog.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No blogs found"
+            });
+        }
+
+        // Return the blogs if found
+        return res.status(200).json({
+            success: true,
+            message: "Blogs fetched successfully",
+            blogs: getAllBlog
+        });
+
+    } catch (error) {
+        console.error(error);
+
+
+        return res.status(500).json({
+            success: false,
+            message: "Error while fetching blogs"
+        });
+    }
+};
+
+//get blog by id 
+export const getBlogByIdController = async (req, res) => {
+    try {
+        // Extract the blogId from req.params
+        const blogId = req.params._id;
+        if (!blogId) {
+            return res.status(400).json({
+                success: false,
+                message: "Blog ID is required"
+            });
+        }
+
+        // Find the blog by ID
+        const getBlog = await Blog.findById(blogId);
+
+        if (!getBlog) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cannot fetch the blog'
+            });
+        }
+
+        // Return the blog if found
+        return res.status(200).json({
+            success: true,
+            message: 'Successfully fetched the blog by ID',
+            getBlog
+        });
+    } catch (error) {
+        console.error(error);
+        // Log error for debugging
+        return res.status(500).json({
+            success: false,
+            message: "Error to fetch blog by id"
         });
     }
 };
