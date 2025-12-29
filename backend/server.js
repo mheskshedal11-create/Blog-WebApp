@@ -9,6 +9,7 @@ import globalErrorHandler from './middleware/globalErrorHandling.js'
 import userRouter from './router/user.route.js'
 import categoryRouter from './router/category.route.js'
 import blogRouter from './router/blog.route.js'
+import commentRouter from './router/comment.route.js'
 
 const app = express()
 const PORT = process.env.PORT || 8000
@@ -36,6 +37,8 @@ app.use(globalErrorHandler)
 app.use('/api/v1/user', userRouter)
 app.use('/api/v1/category', categoryRouter)
 app.use('/api/v1/blog', blogRouter)
+app.use('/api/v1/comment', commentRouter)
+
 // connect db and start server
 dbConnection().then(() => {
     app.listen(PORT, () => {

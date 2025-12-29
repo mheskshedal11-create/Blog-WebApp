@@ -167,3 +167,5 @@ export const getBlogByIdController = async (req, res) => {
         });
     }
 };
+
+//update blog post 

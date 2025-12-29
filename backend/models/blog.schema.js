@@ -33,6 +33,14 @@ const blogSchema = mongoose.Schema({
         enum: ['Pending', 'Accept', "Reject"],
         default: 'Pending'
     },
+    comment: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment"
+    }],
+    likes: {
+        type: Number,
+        default: 0
+    },
     commentEnable: {
         type: Boolean,
         default: true
