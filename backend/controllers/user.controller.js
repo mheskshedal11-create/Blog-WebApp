@@ -3,7 +3,8 @@ import User from "../models/user.model.js";
 import AccessToken from '../utils/accessToken.js';
 import RefreshToken from '../utils/refersToken.js';
 import OtpGenerator from '../utils/otpGenerator.js';
-
+import path from 'path'
+import fs from 'fs'
 
 export const registerController = async (req, res) => {
     try {
@@ -133,6 +134,73 @@ export const loginController = async (req, res) => {
         });
     }
 };
+
+//upload avatar 
+export const uploadAvatarController = async (req, res) => {
+    try {
+        const userId = req.user.id
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please upload an image file'
+            });
+        }
+
+        const user = await User.findById(userId)
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            })
+        }
+
+        // Define your upload directory
+        const uploadDir = path.join('temp', 'avatars');
+
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // Generate filename
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const fileExtension = path.extname(req.file.originalname);
+        const filename = uniqueSuffix + fileExtension;
+
+        // Full file path
+        const filePath = path.join(uploadDir, filename);
+
+        // Delete old avatar if exists
+        if (user.avatar && user.avatar !== '') {
+            const oldAvatarPath = path.join(uploadDir, user.avatar);
+            if (fs.existsSync(oldAvatarPath)) {
+                fs.unlinkSync(oldAvatarPath);
+            }
+        }
+
+        // Write file to disk
+        fs.writeFileSync(filePath, req.file.buffer);
+
+        // Update avatar in database
+        user.avatar = filename;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Avatar uploaded successfully',
+            avatar: user.avatar,
+            avatarUrl: `/temp/avatars/${user.avatar}`
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to upload avatar'
+        });
+    }
+}
 
 // refresh token for controller
 export const refreshTokenController = async (req, res) => {
@@ -372,9 +440,6 @@ export const logoutController = async (req, res) => {
         });
     }
 };
-
-
-
 
 //get user profile 
 export const getProfileController = async (req, res) => {
