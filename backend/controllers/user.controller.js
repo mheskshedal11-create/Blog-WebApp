@@ -481,7 +481,7 @@ export const getProfileController = async (req, res) => {
 //updateProfile 
 export const updateProfileController = async (req, res) => {
     try {
-        const { name, email, mobile } = req.body;
+        const { name, email, mobile, bio } = req.body;
         const { id } = req.user;
 
         if (!id) {
@@ -519,7 +519,8 @@ export const updateProfileController = async (req, res) => {
             {
                 ...(name && { name }),  // Only update name if provided
                 ...(email && { email }),  // Only update email if provided
-                ...(mobile && { mobile })  // Only update mobile if provided
+                ...(mobile && { mobile }),  // Only update mobile if provided
+                ...(bio && { bio })
             },
             { new: true }  // Return the updated document
         );
