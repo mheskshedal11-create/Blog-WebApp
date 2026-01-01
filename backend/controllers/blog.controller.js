@@ -130,11 +130,10 @@ export const getAllBlogController = async (req, res) => {
     }
 };
 
-//get blog by id 
 export const getBlogByIdController = async (req, res) => {
     try {
-        // Extract the blogId from req.params
-        const blogId = req.params._id;
+        const blogId = req.params.id; // corrected
+
         if (!blogId) {
             return res.status(400).json({
                 success: false,
@@ -142,31 +141,34 @@ export const getBlogByIdController = async (req, res) => {
             });
         }
 
-        // Find the blog by ID
-        const getBlog = await Blog.findById(blogId);
+        // Find blog with status 'Accept'
+        const blog = await Blog.findOne({ _id: blogId, status: 'Accept' })
+            .populate('author', 'name email')
+            .populate('category', 'name')
+            .populate('comment');
 
-        if (!getBlog) {
+        if (!blog) {
             return res.status(404).json({
                 success: false,
                 message: 'Cannot fetch the blog'
             });
         }
 
-        // Return the blog if found
         return res.status(200).json({
             success: true,
             message: 'Successfully fetched the blog by ID',
-            getBlog
+            blog
         });
+
     } catch (error) {
         console.error(error);
-        // Log error for debugging
         return res.status(500).json({
             success: false,
-            message: "Error to fetch blog by id"
+            message: "Error fetching blog by ID"
         });
     }
 };
+
 
 //update blog post 
 export const updateBlogController = async (req, res) => {

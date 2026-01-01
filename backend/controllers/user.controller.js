@@ -3,8 +3,7 @@ import User from "../models/user.model.js";
 import AccessToken from '../utils/accessToken.js';
 import RefreshToken from '../utils/refersToken.js';
 import OtpGenerator from '../utils/otpGenerator.js';
-import path from 'path'
-import fs from 'fs'
+import { cloudinary, uploadCloudinary } from '../utils/cloudinary.js';
 
 export const registerController = async (req, res) => {
     try {
@@ -135,10 +134,9 @@ export const loginController = async (req, res) => {
     }
 };
 
-//upload avatar 
 export const uploadAvatarController = async (req, res) => {
     try {
-        const userId = req.user.id
+        const userId = req.user.id;
 
         if (!req.file) {
             return res.status(400).json({
@@ -147,50 +145,47 @@ export const uploadAvatarController = async (req, res) => {
             });
         }
 
-        const user = await User.findById(userId)
+        const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: "User not found"
-            })
+                message: 'User not found'
+            });
         }
 
-        // Define your upload directory
-        const uploadDir = path.join('temp', 'avatars');
+        // Store old public_id before upload
+        const oldAvatarPublicId = user.avatarPublicId;
 
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        // Upload new avatar first
+        const result = await uploadCloudinary(req.file, 'avatars');
+
+        if (!result.secure_url) {
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to upload to Cloudinary'
+            });
         }
 
-        // Generate filename
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const fileExtension = path.extname(req.file.originalname);
-        const filename = uniqueSuffix + fileExtension;
+        // Update user with new avatar
+        user.avatar = result.secure_url;
+        user.avatarPublicId = result.public_id;
+        await user.save();
 
-        // Full file path
-        const filePath = path.join(uploadDir, filename);
-
-        // Delete old avatar if exists
-        if (user.avatar && user.avatar !== '') {
-            const oldAvatarPath = path.join(uploadDir, user.avatar);
-            if (fs.existsSync(oldAvatarPath)) {
-                fs.unlinkSync(oldAvatarPath);
+        // Delete old avatar AFTER successful upload and save
+        if (oldAvatarPublicId) {
+            try {
+                await cloudinary.uploader.destroy(oldAvatarPublicId);
+                console.log('Old avatar deleted successfully');
+            } catch (err) {
+                console.log('Failed to delete old avatar:', err);
+                // Don't fail the request if deletion fails
             }
         }
-
-        // Write file to disk
-        fs.writeFileSync(filePath, req.file.buffer);
-
-        // Update avatar in database
-        user.avatar = filename;
-        await user.save();
 
         return res.status(200).json({
             success: true,
             message: 'Avatar uploaded successfully',
-            avatar: user.avatar,
-            avatarUrl: `/temp/avatars/${user.avatar}`
+            avatar: user.avatar
         });
 
     } catch (error) {
@@ -200,7 +195,7 @@ export const uploadAvatarController = async (req, res) => {
             message: error.message || 'Failed to upload avatar'
         });
     }
-}
+};
 
 // refresh token for controller
 export const refreshTokenController = async (req, res) => {
@@ -383,6 +378,7 @@ export const createNewPassword = async (req, res) => {
                     // Clear OTP fields after password reset
                     forgot_password_otp: null,
                     forgot_password_exp: null,
+                    refresh_token: null
                 }
             },
             { new: true }

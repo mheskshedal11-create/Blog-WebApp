@@ -1,5 +1,5 @@
-
 import mongoose from "mongoose";
+
 const blogSchema = mongoose.Schema({
     author: {
         type: mongoose.Schema.Types.ObjectId,
@@ -16,13 +16,15 @@ const blogSchema = mongoose.Schema({
         default: []
     },
     title: {
-        type: String
+        type: String,
+        required: true
     },
-    excerpt: {  // Fixed typo here
+    excerpt: {
         type: String
     },
     description: {
-        type: String
+        type: String,
+        required: true
     },
     tag: {
         type: [String],
@@ -30,9 +32,23 @@ const blogSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Accept', "Reject"],
+        enum: ['Pending', 'Accept', 'Reject'],
         default: 'Pending'
     },
+    verifiedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    verifiedAt: {
+        type: Date,
+        default: null
+    },
+    rejectionReason: {
+        type: String,
+        default: ''
+    },
+
     comment: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Comment"
@@ -47,5 +63,5 @@ const blogSchema = mongoose.Schema({
     }
 }, { timestamps: true });
 
-const Blog = mongoose.model('Blog', blogSchema)
-export default Blog
+const Blog = mongoose.model('Blog', blogSchema);
+export default Blog;

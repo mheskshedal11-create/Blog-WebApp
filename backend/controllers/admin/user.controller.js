@@ -1,5 +1,6 @@
 import User from '../../models/user.model.js'
-
+import fs from 'fs'
+import path from 'path'
 // Get all users (excluding admins)
 export const getAllUserController = async (req, res) => {
     try {
@@ -25,7 +26,7 @@ export const getAllUserController = async (req, res) => {
     }
 }
 
-// Delete user by admin
+// delete user profile 
 export const deleteUserController = async (req, res) => {
     try {
         const adminId = req.user._id;
@@ -46,6 +47,7 @@ export const deleteUserController = async (req, res) => {
             });
         }
 
+        // Find user first (to get avatar name)
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
@@ -54,19 +56,35 @@ export const deleteUserController = async (req, res) => {
             });
         }
 
-        await User.findByIdAndDelete(userId);
+        const avatar = user.avatar; // store filename safely
+
+        // ✅ DELETE USER FIRST
+        const deletedUser = await User.findByIdAndDelete(userId);
+        if (!deletedUser) {
+            return res.status(500).json({
+                success: false,
+                message: 'User deletion failed'
+            });
+        }
+
+        // ✅ DELETE AVATAR ONLY AFTER USER IS DELETED
+        if (avatar) {
+            const avatarPath = path.join('temp', 'avatars', avatar);
+            if (fs.existsSync(avatarPath)) {
+                fs.unlinkSync(avatarPath);
+            }
+        }
 
         return res.status(200).json({
             success: true,
-            message: 'User deleted successfully by admin',
-            user
+            message: 'User deleted successfully and avatar removed'
         });
 
     } catch (error) {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Failed to delete user: server error"
+            message: 'Server error while deleting user'
         });
     }
-}
+};

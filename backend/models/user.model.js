@@ -12,10 +12,13 @@ const userSchema = mongoose.Schema({
     },
     password: {
         type: String,
-        unique: [true, 'Mobile Number already registered'],
         required: true
     },
     avatar: {
+        type: String,
+        default: ''
+    },
+    avatarPublicId: {        // ✅ ADD THIS FIELD
         type: String,
         default: ''
     },
@@ -29,11 +32,11 @@ const userSchema = mongoose.Schema({
     },
     forgot_password_otp: {
         type: Number,
-        default: ''
+        default: null
     },
     forgot_password_exp: {
         type: Date,
-        default: ''
+        default: null
     },
     role: {
         type: String,
@@ -45,6 +48,7 @@ const userSchema = mongoose.Schema({
         default: ''
     }
 }, { timestamps: true })
+
 const User = mongoose.model('User', userSchema)
 
 export default User
