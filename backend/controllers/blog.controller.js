@@ -2,12 +2,14 @@ import Blog from "../models/blog.schema.js";
 import Category from "../models/category.model.js";
 import fs from 'fs'
 import path from 'path'
+import { cloudinary, uploadCloudinary } from "../utils/cloudinary.js";
 
 //create blog post 
 export const createBlogController = async (req, res) => {
     try {
         const { title, category, excerpt, description, tag, status, commentEnable } = req.body;
-        //find caregory 
+
+        //find category 
         const existingCategory = await Category.findById(category);
         if (!existingCategory) {
             return res.status(404).json({
@@ -26,14 +28,11 @@ export const createBlogController = async (req, res) => {
         }
 
         if (typeof tag === 'string') {
-            // Split by comma and trim whitespace
             tagArray = tag.split(',').map(t => t.trim()).filter(t => t !== '');
         } else if (Array.isArray(tag)) {
-            // Already an array
             tagArray = tag;
         }
 
-        // Validate tags
         if (tagArray.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -41,11 +40,29 @@ export const createBlogController = async (req, res) => {
             });
         }
 
-        // Create blog first WITHOUT images
+        // Upload images to Cloudinary
+        let uploadedImages = [];
+        if (req.files && req.files.length > 0) {
+            for (let file of req.files) {
+                try {
+                    const result = await uploadCloudinary(file, 'blog-images');
+                    if (result.secure_url) {
+                        uploadedImages.push({
+                            url: result.secure_url,
+                            publicId: result.public_id
+                        });
+                    }
+                } catch (uploadError) {
+                    console.error('Image upload error:', uploadError);
+                }
+            }
+        }
+
+        // Create blog with Cloudinary URLs
         const newBlog = new Blog({
             author: req.user,
             category,
-            image: [],
+            image: uploadedImages,
             title,
             excerpt,
             description,
@@ -55,27 +72,6 @@ export const createBlogController = async (req, res) => {
         });
 
         await newBlog.save();
-
-        // Only upload images if blog creation succeeded
-        let uploadedImages = [];
-        if (req.files && req.files.length > 0) {
-            const uploadDir = path.join(process.cwd(), "temp", "blog");
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-
-            for (let img of req.files) {
-                const sanitizedName = img.originalname.replace(/\s+/g, '-').toLowerCase();
-                const filename = `${Date.now()}-${sanitizedName}`;
-                const filepath = path.join(uploadDir, filename);
-                fs.writeFileSync(filepath, img.buffer);
-                uploadedImages.push(filepath);
-            }
-
-            // Update blog with images
-            newBlog.image = uploadedImages;
-            await newBlog.save();
-        }
 
         await newBlog.populate([
             { path: 'author', select: 'name email -_id' },
@@ -97,7 +93,6 @@ export const createBlogController = async (req, res) => {
         });
     }
 };
-
 //get all blog
 export const getAllBlogController = async (req, res) => {
     try {

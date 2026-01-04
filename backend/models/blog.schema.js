@@ -35,11 +35,6 @@ const blogSchema = mongoose.Schema({
         enum: ['Pending', 'Accept', 'Reject'],
         default: 'Pending'
     },
-    verifiedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
-    },
     verifiedAt: {
         type: Date,
         default: null
