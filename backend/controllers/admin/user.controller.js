@@ -47,7 +47,7 @@ export const deleteUserController = async (req, res) => {
             });
         }
 
-        // Find user first (to get avatar name)
+        // Find user first (to get avatar public_id)
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({
@@ -56,7 +56,8 @@ export const deleteUserController = async (req, res) => {
             });
         }
 
-        const avatar = user.avatar; // store filename safely
+        // Store avatar public_id before deleting user
+        const avatarPublicId = user.avatarPublicId;
 
         // ✅ DELETE USER FIRST
         const deletedUser = await User.findByIdAndDelete(userId);
@@ -67,11 +68,14 @@ export const deleteUserController = async (req, res) => {
             });
         }
 
-        // ✅ DELETE AVATAR ONLY AFTER USER IS DELETED
-        if (avatar) {
-            const avatarPath = path.join('temp', 'avatars', avatar);
-            if (fs.existsSync(avatarPath)) {
-                fs.unlinkSync(avatarPath);
+        // ✅ DELETE AVATAR FROM CLOUDINARY AFTER USER IS DELETED
+        if (avatarPublicId) {
+            try {
+                await cloudinary.uploader.destroy(avatarPublicId);
+                console.log('Avatar deleted from Cloudinary successfully');
+            } catch (err) {
+                console.log('Failed to delete avatar from Cloudinary:', err);
+                // Don't fail the request if deletion fails
             }
         }
 

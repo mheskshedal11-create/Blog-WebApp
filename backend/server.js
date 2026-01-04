@@ -42,6 +42,7 @@ app.use('/api/v1/blog', blogRouter)
 app.use('/api/v1/comment', commentRouter)
 app.use('/api/v1/comment', likeRouter)
 app.use('/api/v1/admin', adminRouter)
+app.use('/api/v1/like', likeRouter)
 
 // connect db and start server
 dbConnection().then(() => {
