@@ -1,13 +1,20 @@
 import Blog from "../models/blog.schema.js";
 import Category from "../models/category.model.js";
-import fs from 'fs'
-import path from 'path'
 import { cloudinary, uploadCloudinary } from "../utils/cloudinary.js";
 
 //create blog post 
 export const createBlogController = async (req, res) => {
     try {
+
         const { title, category, excerpt, description, tag, status, commentEnable } = req.body;
+
+        // Validate required fields
+        if (!title || !description) {
+            return res.status(400).json({
+                success: false,
+                message: 'Title and description are required'
+            });
+        }
 
         //find category 
         const existingCategory = await Category.findById(category);
@@ -40,42 +47,58 @@ export const createBlogController = async (req, res) => {
             });
         }
 
+        // Validate that at least one image is uploaded
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'At least one image is required'
+            });
+        }
+
         // Upload images to Cloudinary
         let uploadedImages = [];
-        if (req.files && req.files.length > 0) {
-            for (let file of req.files) {
-                try {
-                    const result = await uploadCloudinary(file, 'blog-images');
-                    if (result.secure_url) {
-                        uploadedImages.push({
-                            url: result.secure_url,
-                            publicId: result.public_id
-                        });
-                    }
-                } catch (uploadError) {
-                    console.error('Image upload error:', uploadError);
+        for (let file of req.files) {
+            try {
+                const result = await uploadCloudinary(file, 'blog-images');
+                if (result.secure_url) {
+                    // Store only the URL as a string (matching schema)
+                    uploadedImages.push(result.secure_url);
                 }
+            } catch (uploadError) {
+                console.error('Image upload error:', uploadError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to upload images',
+                    error: uploadError.message
+                });
             }
+        }
+
+        if (uploadedImages.length === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'No images were successfully uploaded'
+            });
         }
 
         // Create blog with Cloudinary URLs
         const newBlog = new Blog({
-            author: req.user,
+            author: req.user._id || req.user,
             category,
             image: uploadedImages,
             title,
             excerpt,
             description,
             tag: tagArray,
-            status,
-            commentEnable
+            status: status || 'Accept',
+            commentEnable: commentEnable !== undefined ? commentEnable : true
         });
 
         await newBlog.save();
 
         await newBlog.populate([
-            { path: 'author', select: 'name email -_id' },
-            { path: 'category', select: 'name slug -_id' }
+            { path: 'author', select: 'name email' },
+            { path: 'category', select: 'name slug' }
         ]);
 
         res.status(201).json({
@@ -125,64 +148,77 @@ export const getAllBlogController = async (req, res) => {
     }
 };
 
-export const getBlogByIdController = async (req, res) => {
+export const getPublishedBlogByIdController = async (req, res) => {
     try {
-        const blogId = req.params.id; // corrected
+        const { BlogId } = req.params;
 
-        if (!blogId) {
+        if (!BlogId) {
             return res.status(400).json({
                 success: false,
                 message: "Blog ID is required"
             });
         }
 
-        // Find blog with status 'Accept'
-        const blog = await Blog.findOne({ _id: blogId, status: 'Accept' })
+        // Only fetch if status is 'Accept'
+        const blog = await Blog.findOne({
+            _id: BlogId,
+            status: 'Accept'
+        })
             .populate('author', 'name email')
-            .populate('category', 'name')
-            .populate('comment');
+            .populate('category', 'name slug')
+            .populate({
+                path: 'comment',
+                populate: {
+                    path: 'user',
+                    select: 'name email'
+                }
+            });
 
         if (!blog) {
             return res.status(404).json({
                 success: false,
-                message: 'Cannot fetch the blog'
+                message: 'Blog not found or not published yet'
             });
         }
 
         return res.status(200).json({
             success: true,
-            message: 'Successfully fetched the blog by ID',
-            blog
+            message: 'Successfully fetched the blog',
+            data: blog
         });
 
     } catch (error) {
-        console.error(error);
+        console.error('Error fetching blog:', error);
+
+        if (error.kind === 'ObjectId') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid blog ID format"
+            });
+        }
+
         return res.status(500).json({
             success: false,
-            message: "Error fetching blog by ID"
+            message: "Error fetching blog",
+            error: error.message
         });
     }
 };
 
-
-//update blog post 
+//update blog 
 export const updateBlogController = async (req, res) => {
     try {
+        const { title, category, excerpt, description } = req.body;
         const { blogId } = req.params;
+        const userId = req.user._id || req.user.id;
 
-        // Check if req.body exists
-        if (!req.body || Object.keys(req.body).length === 0) {
-            // If no body fields but has files, that's okay
-            if (!req.files || req.files.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: "No data provided to update"
-                });
-            }
+        // Validate blog ID
+        if (!blogId) {
+            return res.status(400).json({
+                success: false,
+                message: "Blog ID is required"
+            });
         }
-
-        const { title, category, excerpt, description, tag, status, commentEnable } = req.body;
-
         // Find existing blog
         const existingBlog = await Blog.findById(blogId);
         if (!existingBlog) {
@@ -191,23 +227,19 @@ export const updateBlogController = async (req, res) => {
                 message: "Blog not found"
             });
         }
-
-        // // Check authorization(optional - if you want only author to update)
-        // if (existingBlog.author.toString() !== req.user.toString()) {
-        //     return res.status(403).json({
-        //         success: false,
-        //         message: "You are not authorized to update this blog"
-        //     });
-        // }
-
-        // Prepare update object - only include fields that are provided
-        const updateData = {};
-
-        // Update title if provided
-        if (title !== undefined && title !== '') {
-            updateData.title = title;
+        // Check authorization - only author can update
+        if (existingBlog.author.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to update this blog"
+            });
         }
-
+        // Prepare update object
+        const updateData = {};
+        // Update title if provided
+        if (title !== undefined && title.trim() !== '') {
+            updateData.title = title.trim();
+        }
         // Update category if provided and validate
         if (category !== undefined && category !== '') {
             const existingCategory = await Category.findById(category);
@@ -219,79 +251,14 @@ export const updateBlogController = async (req, res) => {
             }
             updateData.category = category;
         }
-
         // Update excerpt if provided
-        if (excerpt !== undefined && excerpt !== '') {
-            updateData.excerpt = excerpt;
+        if (excerpt !== undefined && excerpt.trim() !== '') {
+            updateData.excerpt = excerpt.trim();
         }
-
         // Update description if provided
-        if (description !== undefined && description !== '') {
-            updateData.description = description;
+        if (description !== undefined && description.trim() !== '') {
+            updateData.description = description.trim();
         }
-
-        // Update status if provided
-        if (status !== undefined && status !== '') {
-            updateData.status = status;
-        }
-
-        // Update commentEnable if provided (boolean can be false, so check undefined only)
-        if (commentEnable !== undefined) {
-            updateData.commentEnable = commentEnable === 'true' || commentEnable === true;
-        }
-
-        // Handle tags if provided
-        if (tag !== undefined) {
-            let tagArray;
-            if (typeof tag === 'string' && tag.trim() !== '') {
-                tagArray = tag.split(',').map(t => t.trim()).filter(t => t !== '');
-            } else if (Array.isArray(tag)) {
-                tagArray = tag.filter(t => t && t.trim() !== '');
-            }
-
-            if (tagArray && tagArray.length > 0) {
-                updateData.tag = tagArray;
-            } else if (tag === '' || (Array.isArray(tag) && tag.length === 0)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'At least one valid tag is required'
-                });
-            }
-        }
-
-        // Handle image upload if new files are provided
-        if (req.files && req.files.length > 0) {
-            const uploadDir = path.join(process.cwd(), "temp", "blog");
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-
-            // Delete old images
-            if (existingBlog.image && existingBlog.image.length > 0) {
-                existingBlog.image.forEach(imgPath => {
-                    if (fs.existsSync(imgPath)) {
-                        try {
-                            fs.unlinkSync(imgPath);
-                        } catch (err) {
-                            console.error('Error deleting old image:', err);
-                        }
-                    }
-                });
-            }
-
-            // Upload new images
-            const uploadedImages = [];
-            for (let img of req.files) {
-                const sanitizedName = img.originalname.replace(/\s+/g, '-').toLowerCase();
-                const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}-${sanitizedName}`;
-                const filepath = path.join(uploadDir, filename);
-                fs.writeFileSync(filepath, img.buffer);
-                uploadedImages.push(filepath);
-            }
-
-            updateData.image = uploadedImages;
-        }
-
         // Check if there's anything to update
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
@@ -299,24 +266,21 @@ export const updateBlogController = async (req, res) => {
                 message: "No valid data provided to update"
             });
         }
-
-        // Update blog with new data
+        // Update the blog
         const updatedBlog = await Blog.findByIdAndUpdate(
             blogId,
             { $set: updateData },
             { new: true, runValidators: true }
         ).populate([
-            { path: 'author', select: 'name email -_id' },
-            { path: 'category', select: 'name slug -_id' }
+            { path: 'author', select: 'name email' },
+            { path: 'category', select: 'name slug' }
         ]);
-
         if (!updatedBlog) {
             return res.status(404).json({
                 success: false,
                 message: "Blog not found after update"
             });
         }
-
         return res.status(200).json({
             success: true,
             message: "Blog updated successfully",
@@ -327,8 +291,10 @@ export const updateBlogController = async (req, res) => {
         console.error('Blog update error:', error);
         return res.status(500).json({
             success: false,
-            message: "Failed to update blog",
+            message: "Failed to update the blog",
             error: error.message
         });
     }
 };
+
+

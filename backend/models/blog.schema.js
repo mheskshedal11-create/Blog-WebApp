@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 const blogSchema = mongoose.Schema({
     author: {
         type: mongoose.Schema.Types.ObjectId,
@@ -12,15 +11,24 @@ const blogSchema = mongoose.Schema({
         required: true
     },
     image: {
-        type: [String],
-        default: []
+        type: [String], // Keep as array of strings (URLs)
+        default: [],
+        required: true,
+        validate: {
+            validator: function (v) {
+                return v.length > 0;
+            },
+            message: 'At least one image is required'
+        }
     },
     title: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     excerpt: {
-        type: String
+        type: String,
+        trim: true
     },
     description: {
         type: String,
@@ -28,7 +36,14 @@ const blogSchema = mongoose.Schema({
     },
     tag: {
         type: [String],
-        default: []
+        default: [],
+        required: true,
+        validate: {
+            validator: function (v) {
+                return v.length > 0;
+            },
+            message: 'At least one tag is required'
+        }
     },
     status: {
         type: String,
@@ -43,7 +58,6 @@ const blogSchema = mongoose.Schema({
         type: String,
         default: ''
     },
-
     comment: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Comment"
