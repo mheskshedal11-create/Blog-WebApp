@@ -12,6 +12,7 @@ import blogRouter from './router/blog.route.js'
 import commentRouter from './router/comment.route.js'
 import likeRouter from './router/like.route.js'
 import adminRouter from './router/admin/admin.route.js'
+import searchRouter from './router/search.route.js'
 
 const app = express()
 const PORT = process.env.PORT || 8000
@@ -43,6 +44,7 @@ app.use('/api/v1/comment', commentRouter)
 app.use('/api/v1/comment', likeRouter)
 app.use('/api/v1/admin', adminRouter)
 app.use('/api/v1/like', likeRouter)
+app.use('/api/v1/search', searchRouter)
 
 // connect db and start server
 dbConnection().then(() => {
