@@ -120,7 +120,7 @@ export const createBlogController = async (req, res) => {
 export const getAllBlogController = async (req, res) => {
     try {
         // Fetch all blogs
-        const getAllBlog = await Blog.find();
+        const getAllBlog = await Blog.find({ status: "Accept" });
 
         // Check if no blogs are found
         if (getAllBlog.length === 0) {
