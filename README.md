@@ -97,6 +97,55 @@ RUNNING THE APPLICATION
 Development Mode
 npm run dev
 ==================================================
+# API Routes
+
+## User Routes
+POST /api/v1/user/register
+POST /api/v1/user/login
+PUT  /api/v1/user/upload-avatar
+POST /api/v1/user/refresh-token
+POST /api/v1/user/forgot-password
+POST /api/v1/user/verify-otp
+PUT  /api/v1/user/reset-password
+POST /api/v1/user/logout
+GET  /api/v1/user/profile
+PUT  /api/v1/user/profile
+PUT  /api/v1/user/password
+
+## Search Routes
+GET  /api/v1/search
+
+## Like Routes
+POST /api/v1/like/like/:blogId
+POST /api/v1/like/remove/:blogId
+POST /api/v1/like/toggle/:blogId
+
+## Comment Routes
+POST /api/v1/comment/blog/:blogId/comment
+GET  /api/v1/comment/get-comments/:blogId
+
+## Category Routes
+POST   /api/v1/category/create
+GET    /api/v1/category/get-category
+PUT    /api/v1/category/update/:slug
+DELETE /api/v1/category/delete/:slug
+
+## Blog Routes
+POST /api/v1/blog/create
+GET  /api/v1/blog/get-all
+GET  /api/v1/blog/getblog/:blogId
+PUT  /api/v1/blog/update/:blogId
+
+## Admin Routes
+GET    /api/v1/admin/get-all-user
+DELETE /api/v1/admin/delete-user/:userId
+GET    /api/v1/admin/get-unverify-blog
+GET    /api/v1/admin/get-unverify-blog/:id
+PUT    /api/v1/admin/verify-all-blogs
+PUT    /api/v1/admin/verify-blog/:id
+PUT    /api/v1/admin/reject-all-blogs
+PUT    /api/v1/admin/reject-blog/:id
+==================================================
 BLOG VERIFICATION WORKFLOW
 
 1. User creates a blog post with image upload
