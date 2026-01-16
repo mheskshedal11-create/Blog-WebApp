@@ -28,13 +28,15 @@ app.use(morgan('dev'))
 
 // CORS
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: '*',
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }))
 
+
 //global error handler
 app.use(globalErrorHandler)
+
 
 //router
 app.use('/api/v1/user', userRouter)
